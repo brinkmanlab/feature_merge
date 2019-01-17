@@ -3,11 +3,13 @@ import gffutils
 import sys
 import getopt
 
-usage = "Usage: feature_merge.py [-i] [-e] <input1> <input2> [...<input_n>]. Accepts GFF or GTF format.\n" \
-        "-i Ignore strand, merge feature regardless of strand.\n" \
-        "-e Exclude component features from output."
+usage = "Usage: feature_merge.py [-i] [-e] [-v] [-f type[,type..]].. <input1> <input2> [..<input_n>]. Accepts GFF or GTF format.\n" \
+        "-v Print version and exit\n" \
+        "-f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology. (Can be provided more than once to specify multiple merge groups)\n" \
+        "-i Ignore strand, merge feature regardless of strand\n" \
+        "-e Exclude component features from output"
 
-def merge(target_db, features, ignore_strand=False):
+def merge(target_db, features, ignore_strand=False, featuretypes=()):
     """
     Merge overlapping features together.
 
@@ -24,7 +26,7 @@ def merge(target_db, features, ignore_strand=False):
     Returns
     -------
     A generator object that yields :class:`Feature` objects representing
-    the newly merged features.
+    the newly merged features and a list of the features that compose it.
     """
 
     # Consume iterator up front...
@@ -44,8 +46,8 @@ def merge(target_db, features, ignore_strand=False):
     # We don't need to check the first one, so start at feature #2.
     for feature in features[1:]:
         # Does this feature start within the currently merged feature?...
-        if feature.start <= current_merged_stop + 1 and feature.seqid == seqid and (ignore_strand or feature.strand == strand):
-            feature_components += feature
+        if feature.start <= current_merged_stop + 1 and feature.seqid == seqid and (ignore_strand or feature.strand == strand) and (not featuretypes or (featuretype in featuretypes and feature.featuretype == featuretype)):
+            feature_components.append(feature)
             # ...It starts within, so leave current_merged_start where it
             # is.  Does it extend any farther?
             if feature.stop >= current_merged_stop:
@@ -85,11 +87,11 @@ def merge(target_db, features, ignore_strand=False):
     merged_feature = dict(
         seqid=feature.seqid,
         source='',
-        featuretype=feature.featuretype,
+        featuretype=featuretype,
         start=current_merged_start,
         end=current_merged_stop,
         score='.',
-        strand=feature.strand,
+        strand='.' if ignore_strand else strand,
         frame='.',
         attributes='')
     yield target_db._feature_returner(**merged_feature), [feature]
@@ -97,18 +99,28 @@ def merge(target_db, features, ignore_strand=False):
 if __name__ == '__main__':
     ignore_strand = False
     exclude_components = False
+    featuretypes_groups = []
 
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], 'ie')
+        opts, args = getopt.gnu_getopt(sys.argv[1:], 'vief:')
         for opt, val in opts:
-            if opt == '-i':
+            if opt == '-v':
+                import __version
+                print(__version.__versionstr__)
+                exit(0)
+            elif opt == '-i':
                 ignore_strand = True
             elif opt == '-e':
                 exclude_components = True
+            elif opt == '-f':
+                featuretypes_groups.append(tuple(filter(None, val.split(','))))
+
     except getopt.GetoptError as err:
         args = []
 
-    if len(args) < 2:
+    if not featuretypes_groups: featuretypes_groups.append(None)
+
+    if len(args) < 1:
         print(usage, file=sys.stderr)
         exit(1)
 
@@ -116,12 +128,13 @@ if __name__ == '__main__':
     for input in args[2:]:
         db = db.update(input, make_backup=False)
 
-    for merged, components in merge(db, db.all_features(order_by=('seqid', 'strand', 'start')), ignore_strand):
-        if len(components) == 1 or not exclude_components:
-            for component in components:
-                component.attributes['Parent'] = merged.id
-                print(component)
-        if len(components) > 1: # Don't output merged record of single record
-            for component in components:
-                merged.source += component.source
-            print(merged)
+    for featuretypes in featuretypes_groups:
+        for merged, components in merge(db, db.all_features(featuretype=featuretypes, order_by=('seqid', 'strand', 'start')), ignore_strand, featuretypes):
+            if len(components) == 1 or not exclude_components:
+                for component in components:
+                    component.attributes['Parent'] = merged.id
+                    print(component)
+            if len(components) > 1: # Don't output merged record of single record
+                for component in components:
+                    merged.source += ',' + component.source
+                print(merged)
