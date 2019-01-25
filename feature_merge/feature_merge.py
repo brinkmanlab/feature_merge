@@ -63,7 +63,7 @@ def merge(target_db, features, ignore_strand=False, featuretypes=()):
             merged_feature = dict(
                 seqid=seqid,
                 source='',
-                featuretype=featuretype,
+                featuretype="sequence_type" if len(features) > 1 else featuretype,
                 start=current_merged_start,
                 end=current_merged_stop,
                 score='.',
@@ -124,17 +124,39 @@ if __name__ == '__main__':
         print(usage, file=sys.stderr)
         exit(1)
 
-    db = gffutils.create_db(args[1], ":memory:", merge_strategy="merge")
+    db = gffutils.create_db(args[0], ":memory:", merge_strategy="merge")
     for input in args[2:]:
         db = db.update(input, make_backup=False)
 
     for featuretypes in featuretypes_groups:
         for merged, components in merge(db, db.all_features(featuretype=featuretypes, order_by=('seqid', 'strand', 'start')), ignore_strand, featuretypes):
+            #print(merged.featuretype + " " + str(merged.start) )
+            #merged_iterable = [merged] # convert merged into iterable so it can be used by update()
+            #db.update(merged_iterable) # add merged feature into database for purpose of generating id
+            #print(merged.id)
+            merged.id = "merged"
             if len(components) == 1 or not exclude_components:
                 for component in components:
-                    component.attributes['Parent'] = merged.id
-                    print(component)
-            if len(components) > 1: # Don't output merged record of single record
+                    if not component.id:
+                        print("DB Error: Component ID not set, nothing can be appended to merged ID")
+                    merged.id += "-" + component.id
+
+                if len(merged.id) > 32:
+                    merged.id = hex(hash(merged.id))
+
                 for component in components:
-                    merged.source += ',' + component.source
+                    if not component.attributes.get("Parent"):
+                        component.attributes["Parent"] = list()
+                    component.attributes["Parent"].append(merged.id)
+                    print(component)
+
+            merged.attributes["ID"] = merged.id
+            #print(merged.attributes["ID"])
+
+            if len(components) > 1: # Don't output merged record of single record
+                # Eliminate duplicate sources before adding to merged.source
+                sources = [component.source for component in components]
+                sources = list(set(sources))
+                sources = ",".join(sources)
+                merged.source = sources
                 print(merged)
