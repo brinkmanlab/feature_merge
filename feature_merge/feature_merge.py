@@ -23,28 +23,27 @@ def merge(target_db, features, ignore_strand=False, ignore_featuretype=False):
         strand will be set to '.'.  Otherwise, ValueError will be raised if
         trying to merge features on differnt strands.
 
+    ignore_feauretype : bool
+        If True, features of multiple types will be merged, and the final
+        type will be set to 'sequence_feature'.
+
     Returns
     -------
     A generator object that yields :class:`Feature` objects representing
     the newly merged features and a list of the features that compose it.
     """
 
-    # Consume iterator up front...
-    features = list(features)
-
-    if len(features) == 0:
-        raise StopIteration
-
     # To start, we create a merged feature of just the first feature.
-    current_merged_start = features[0].start
-    current_merged_stop = features[0].stop
-    seqid = features[0].seqid
-    strand = features[0].strand
-    featuretype = features[0].featuretype
-    feature_components = [features[0]]
+    features = iter(features)
+    feature = next(features)
+    current_merged_start = feature.start
+    current_merged_stop = feature.stop
+    seqid = feature.seqid
+    strand = feature.strand
+    featuretype = feature.featuretype
+    feature_components = [feature]
 
-    # We don't need to check the first one, so start at feature #2.
-    for feature in features[1:]:
+    for feature in features:
         # Does this feature start within the currently merged feature?...
         if feature.start <= current_merged_stop + 1 and feature.seqid == seqid and (ignore_strand or feature.strand == strand) and (ignore_featuretype or feature.featuretype == featuretype):
             feature_components.append(feature)
@@ -62,8 +61,8 @@ def merge(target_db, features, ignore_strand=False, ignore_featuretype=False):
             # done with the current merged feature.  Prepare for output...
             yield target_db._feature_returner(
                 seqid=seqid,
-                source='',
-                featuretype="sequence_feature" if len(features) > 1 else featuretype,
+                source=",".join(set(component.source for component in feature_components)),
+                featuretype="sequence_feature" if ignore_featuretype else featuretype,
                 start=current_merged_start,
                 end=current_merged_stop,
                 score='.',
@@ -80,13 +79,10 @@ def merge(target_db, features, ignore_strand=False, ignore_featuretype=False):
             featuretype = feature.featuretype
             feature_components = [feature]
 
-    # need to yield the last one.
-    if len(features) == 1:
-        feature = features[0]
     yield target_db._feature_returner(
         seqid=seqid,
-        source='',
-        featuretype="sequence_feature" if len(features) > 1 else featuretype,
+        source = ",".join(set(component.source for component in feature_components)),
+        featuretype="sequence_feature" if ignore_featuretype else featuretype,
         start=current_merged_start,
         end=current_merged_stop,
         score='.',
@@ -142,30 +138,34 @@ if __name__ == '__main__':
         if featuregroup: remaining_featuretypes -= featuregroup
         else: remaining_featuretypes = set()
         for merged, components in merge(db, db.all_features(featuretype=featuregroup, order_by=merge_order), ignore_strand, ignore_featuretypes):
+            # Store merged record components as hierarchy
             merged.id = "merged"
             if len(components) > 1:
+                # Build a unique id for merged record
                 for component in components:
                     if not component.id:
                         component.id = hex(hash(component) + 2**63)[2:]
                     merged.id += "-" + component.id
 
+                #If id is too long, hash and encode it
                 if len(merged.id) > 32:
                     merged.id = hex(hash(merged.id)+ 2**63)[2:]
 
                 merged.attributes["ID"] = merged.id
 
+                # Set merged record as component parent
                 for component in components:
                     if "Parent" not in component.attributes:
                         component.attributes["Parent"] = []
                     component.attributes["Parent"].append(merged.id)
 
+            #Output components
             if len(components) == 1 or not exclude_components:
                 for component in components:
                     print(component)
 
-            if len(components) > 1: # Don't output merged record of single record
-                # Eliminate duplicate sources before adding to merged.source
-                merged.source = ",".join(set(component.source for component in components))
+            #Output merged record if more than one component
+            if len(components) > 1:
                 print(merged)
 
     #Output any features that may have not been in the -f arguments
