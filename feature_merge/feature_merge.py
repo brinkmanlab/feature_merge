@@ -65,6 +65,7 @@ def merge(self, features, exact_only=False, ignore_strand=False, ignore_featuret
             feature_components.append(feature)
             if feature.strand != strand: strand = '.'
             if feature.frame != frame: frame = '.'
+            if feature.featuretype != featuretype: featuretype = "sequence_feature"
             # ...It starts within, so leave current_merged_start where it
             # is.  Does it extend any farther?
             if feature.stop >= current_merged_stop:
@@ -82,7 +83,7 @@ def merge(self, features, exact_only=False, ignore_strand=False, ignore_featuret
             yield self._feature_returner(
                 seqid=current_merged_seqid,
                 source=",".join(set(component.source for component in feature_components)),
-                featuretype="sequence_feature" if ignore_featuretype else featuretype,
+                featuretype=featuretype,
                 start=current_merged_start,
                 end=current_merged_stop,
                 score='.',
@@ -105,7 +106,7 @@ def merge(self, features, exact_only=False, ignore_strand=False, ignore_featuret
     yield self._feature_returner(
         seqid=current_merged_seqid,
         source = ",".join(set(component.source for component in feature_components)),
-        featuretype="sequence_feature" if ignore_featuretype else featuretype,
+        featuretype=featuretype,
         start=current_merged_start,
         end=current_merged_stop,
         score='.',
