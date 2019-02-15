@@ -3,6 +3,7 @@ import shutil
 
 import gffutils
 import sys
+import os
 import getopt
 
 usage = "Usage: feature_merge.py [-i] [-e] [-x] [-v] [-f type[,type..]].. <input1> [<input_n>..]\n" \
@@ -180,6 +181,10 @@ if __name__ == '__main__':
     if len(args) < 1:
         print(usage, file=sys.stderr)
         exit(1)
+
+    #Remove any empty files as GFFutils gets angry
+    args = list(filter(os.path.getsize, args))
+    if not len(args): exit(0)
 
     if not featuretypes_groups:
         featuretypes_groups.append(None)
