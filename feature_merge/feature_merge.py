@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+Feature Merge - Merge annotations in GFF files.
+Can merge overlapping annotations based on criteria.
+
+Run without arguments for options help.
+
+Nolan Woods (nolan_w@sfu.ca) 2019
+Brinkman Lab, SFU
+"""
 import shutil
 
 import gffutils
@@ -6,13 +15,23 @@ import sys
 import os
 import getopt
 
-usage = "Usage: feature_merge.py [-i] [-e] [-x] [-v] [-f type[,type..]].. <input1> [<input_n>..]\n" \
-        "Accepts GFF or GTF format.\n" \
-        "-v Print version and exit\n" \
-        "-f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)\n" \
-        "-i Ignore strand, merge feature regardless of strand\n" \
-        "-x Only merge features with identical coordinates\n" \
-        "-e Exclude component features from output"
+usage = """
+Usage: feature_merge.py [-i] [-e] [-x] [-v] [-m merge|append|error|skip|replace] [-f type[,type..]].. <input1> [<input_n>..]
+Accepts GFF or GTF format.
+-v Print version and exit
+-f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)
+-i Ignore strand, merge feature regardless of strand
+-x Only merge features with identical coordinates
+-e Exclude component features from output
+-m Merge strategy used to deal with id collisions between input files.
+    merge: attributes of all features with the same primary key will be merged
+    append: entry will have a unique, autoincremented primary key assigned to it
+    error: exception will be raised. This means you will have to edit the file yourself to fix the duplicated IDs
+    skip: ignore duplicates, emitting a warning
+    replace: keep last duplicate
+"""[1:-1]
+
+merge_strategies = {"merge": "merge", "append": "create_unique", "error": "error", "skip": "warning", "replace": "replace"}
 
 def merge(self, features, exact_only=False, ignore_strand=False, ignore_featuretype=False):
     """
@@ -119,6 +138,7 @@ def update(self, data, **kwargs):
     """
     Ripped this out of FeatureDB.update() to deal with a bug.
     Update database with features in `data`.
+    If the file is empty, return rather than throw exception.
 
     data : str, iterable, FeatureDB instance
         If FeatureDB, all data will be used. If string, assume it's
@@ -145,6 +165,9 @@ def update(self, data, **kwargs):
     else:
         raise ValueError
 
+    peek, data._iter = iterators.peek(data._iter, 1)
+    if len(peek) == 0: return # If the file is empty then do nothing
+
     db._autoincrements.update(self._autoincrements)
     db._populate_from_lines(data)
     db._update_relations()
@@ -157,7 +180,8 @@ if __name__ == '__main__':
     exact_only = False
     exclude_components = False
     featuretypes_groups = []
-
+    merge_strategy = "create_unique"
+    # Parse arguments
     try:
         opts, args = getopt.gnu_getopt(sys.argv[1:], 'viexf:')
         for opt, val in opts:
@@ -174,6 +198,11 @@ if __name__ == '__main__':
                 if val != "ALL": featuretypes_groups.append(set(filter(None, val.split(','))))
             elif opt == '-x':
                 exact_only = True
+            elif opt == '-m':
+                if val in merge_strategies:
+                    merge_strategy = merge_strategies[val]
+                else:
+                    raise getopt.GetoptError("Invalid merge strategy", opt)
 
     except getopt.GetoptError as err:
         print("Argument error(", err.opt, "): ", err.msg, file=sys.stderr)
@@ -183,7 +212,7 @@ if __name__ == '__main__':
         print(usage, file=sys.stderr)
         exit(1)
 
-    #Remove any empty files as GFFutils gets angry
+    # Remove any empty files as GFFutils gets angry
     args = list(filter(os.path.getsize, args))
     if not len(args): exit(0)
 
@@ -195,23 +224,23 @@ if __name__ == '__main__':
     else:
         merge_order = ('seqid', 'featuretype', 'strand', 'start')
 
-    #Load input data
+    # Load input data
     try:
         input = args[0]
-        db = gffutils.create_db(input, ":memory:", merge_strategy="create_unique")
+        db = gffutils.create_db(input, ":memory:", merge_strategy=merge_strategy)
 
         for input in args[1:]:
-            update(db, input, merge_strategy="create_unique")
+            update(db, input, merge_strategy=merge_strategy)
     except Exception as e:
         print("Error while parsing ", input, e, file=sys.stderr)
         raise
 
     remaining_featuretypes = set(db.featuretypes())
 
-    #Output header
+    # Output header
     print("##gff-version 3")
 
-    #Merge features per featuregroup
+    # Merge features per featuregroup
     for featuregroup in featuretypes_groups:
         if featuregroup:
             remaining_featuretypes -= featuregroup
@@ -227,7 +256,7 @@ if __name__ == '__main__':
                         component.id = hex(hash(component) + 2**63)[2:]
                     merged.id += "-" + component.id
 
-                #If id is too long, hash and encode it
+                # If id is too long, hash and encode it
                 if len(merged.id) > 32:
                     merged.id = hex(hash(merged.id)+ 2**63)[2:]
 
@@ -239,17 +268,17 @@ if __name__ == '__main__':
                         component.attributes["Parent"] = []
                     component.attributes["Parent"].append(merged.id)
 
-            #Output components
+            # Output components
             if len(components) == 1 or not exclude_components:
                 for component in components:
                     component.attributes["ID"] = component.attributes.get('ID', [component.id])
                     print(component)
 
-            #Output merged record if more than one component
+            # Output merged record if more than one component
             if len(components) > 1:
                 print(merged)
 
-    #Output any features that may have not been in the -f arguments
+    # Output any features that may have not been in the -f arguments
     if remaining_featuretypes:
         for feature in db.all_features(featuretype=remaining_featuretypes, order_by=merge_order):
             print(feature)
