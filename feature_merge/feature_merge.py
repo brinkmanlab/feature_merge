@@ -80,7 +80,7 @@ def merge(self, features, exact_only=False, ignore_strand=False, ignore_featuret
     if exact_only:
         coordinate_criteria = lambda seqid, start, stop: start == current_merged_start and stop == current_merged_stop and seqid == current_merged_seqid
     else:
-        coordinate_criteria = lambda seqid, start, stop: start <= current_merged_stop + 1 and seqid == current_merged_seqid
+        coordinate_criteria = lambda seqid, start, stop: current_merged_start <= start and start <= current_merged_stop + 1 and seqid == current_merged_seqid
 
     for feature in features:
         # Does this feature start within the currently merged feature?...
