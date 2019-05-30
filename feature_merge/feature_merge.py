@@ -183,7 +183,7 @@ if __name__ == '__main__':
     merge_strategy = "create_unique"
     # Parse arguments
     try:
-        opts, args = getopt.gnu_getopt(sys.argv[1:], 'viexf:')
+        opts, args = getopt.gnu_getopt(sys.argv[1:], 'viexf:m:')
         for opt, val in opts:
             if opt == '-v':
                 import __version
@@ -282,3 +282,4 @@ if __name__ == '__main__':
     if remaining_featuretypes:
         for feature in db.all_features(featuretype=remaining_featuretypes, order_by=merge_order):
             print(feature)
+
