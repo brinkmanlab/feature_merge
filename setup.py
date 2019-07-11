@@ -8,7 +8,7 @@ with open('README.rst') as readme:
         packages=find_packages(),
         long_description=readme.read(),
         install_requires=['gffutils'],
-        scripts=['feature_merge/feature_merge.py'],
+        scripts=['feature_merge/__init__.py'],
         url='https://github.com/brinkmanlab/feature_merge',
         license='MIT',
         author='Nolan Woods',
