@@ -288,16 +288,19 @@ def get_args(sysargs):
                     raise getopt.GetoptError("Invalid merge strategy", opt)
 
     except getopt.GetoptError as err:
+        # TODO raise exception rather than exit
         print("Argument error(", err.opt, "): ", err.msg, file=sys.stderr)
         args = []
 
     if len(args) < 1:
         print(usage, file=sys.stderr)
+        # TODO raise exception rather than exit
         exit(1)
 
     # Remove any empty files as GFFutils gets angry
     paths = list(filter(os.path.getsize, args))
     if not len(paths):
+        # TODO raise exception rather than exit
         exit(0)
 
     if exact_only:
