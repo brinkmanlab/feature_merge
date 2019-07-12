@@ -32,3 +32,7 @@ Usage::
         error: exception will be raised. This means you will have to edit the file yourself to fix the duplicated IDs
         skip: ignore duplicates, emitting a warning
         replace: keep last duplicate
+        
+See CONTRIBUTING.rst_ for information on contributing to this repo.
+
+.. _CONTRIBUTING.rst: CONTRIBUTING.rst
