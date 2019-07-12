@@ -24,8 +24,28 @@ class TestMerge(TestWithSynthDB):
         # Ensure output matches expected
         self.assertEqual(len(expected_merge_children), len(merged), m_dump)
         for expected, actual in zip(expected_merge_children, merged):
+            c_dump = '\n'.join(map(str, actual.children)) + '\n' + str(actual) + '\n'
             self.assertEqual(len(expected), len(actual.children), '\n'.join(map(str, [expected, actual])) + '\n')
-            self.assertTrue(all(child.id in expected for child in actual.children))
+            self.assertTrue(all(child.id in expected for child in actual.children), c_dump)
+
+            if actual.strand != '.':
+                self.assertTrue(all(f.strand == actual.strand for f in actual.children), c_dump)
+
+            if actual.frame != '.':
+                self.assertTrue(all(f.frame == actual.frame for f in actual.children), c_dump)
+
+            if expected:
+                self.assertEqual(actual.start, min(f.start for f in actual.children), c_dump)
+                self.assertEqual(actual.end, max(f.end for f in actual.children), c_dump)
+                if all(f.seqid == actual.children[0].seqid for f in actual.children):
+                    self.assertEqual(actual.seqid, actual.children[0].seqid, c_dump)
+                else:
+                    self.assertEqual(set(f.seqid for f in actual.children), set(actual.seqid.split(',')), c_dump)
+
+                if all(f.featuretype == actual.children[0].featuretype for f in actual.children):
+                    self.assertTrue(all(f.featuretype == actual.featuretype for f in actual.children), c_dump)
+                else:
+                    self.assertEqual('sequence_feature', actual.featuretype, c_dump)
 
         return merged
 
@@ -61,15 +81,15 @@ class TestMerge(TestWithSynthDB):
         self._merge_and_compare(['basic1', 'adjacent1'], [['basic1', 'adjacent1']])
 
     def test_any_overlap(self):
-        self._merge_and_compare(['basic1', 'overlap_start1'], [['basic1', 'overlap_start1']])
+        self._merge_and_compare(['basic1', 'overlap_start1'], [['basic1', 'overlap_start1']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.strand, mc.feature_type))
         self._merge_and_compare(['overlap_start1', 'basic1'], [['basic1', 'overlap_start1']])
-        self._merge_and_compare(['adjacent1', 'basic1'], [['basic1', 'adjacent1']])
-        self._merge_and_compare(['adjacent4', 'basic1'], [['basic1', 'adjacent4']])
+        self._merge_and_compare(['adjacent1', 'basic1'], [['basic1', 'adjacent1']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.strand, mc.feature_type))
+        self._merge_and_compare(['adjacent4', 'basic1'], [['basic1', 'adjacent4']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.strand, mc.feature_type))
 
     def test_adjacent_len1(self):
         self._merge_and_compare(['basic1', 'adjacent2'], [['basic1', 'adjacent2']])
-        self._merge_and_compare(['adjacent2', 'basic1'], [['basic1', 'adjacent2']])
-        self._merge_and_compare(['basic1', 'adjacent3'], [['basic1', 'adjacent3']])
+        self._merge_and_compare(['adjacent2', 'basic1'], [['basic1', 'adjacent2']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.strand, mc.feature_type))
+        self._merge_and_compare(['basic1', 'adjacent3'], [['basic1', 'adjacent3']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.strand, mc.feature_type))
         self._merge_and_compare(['adjacent3', 'basic1'], [['basic1', 'adjacent3']])
 
     def test_end_overlap(self):
@@ -79,9 +99,9 @@ class TestMerge(TestWithSynthDB):
         self._merge_and_compare(['basic1', 'strand_plus1'], [['basic1', 'strand_plus1']], ignore_strand=True)
         self._merge_and_compare(['basic1', 'strand_minus1'], [['basic1', 'strand_minus1']], ignore_strand=True)
         self._merge_and_compare(['basic1', 'strand_plus1', 'strand_minus1'], [['basic1', 'strand_plus1', 'strand_minus1']], ignore_strand=True)
-        self._merge_and_compare(['basic1', 'strand_plus1'], [['basic1', 'strand_plus1']], merge_criteria=(mc.any_overlap_inclusive, mc.feature_type))
-        self._merge_and_compare(['basic1', 'strand_minus1'], [['basic1', 'strand_minus1']], merge_criteria=(mc.any_overlap_inclusive, mc.feature_type))
-        self._merge_and_compare(['basic1', 'strand_plus1', 'strand_minus1'], [['basic1', 'strand_plus1', 'strand_minus1']], merge_criteria=(mc.any_overlap_inclusive, mc.feature_type))
+        self._merge_and_compare(['basic1', 'strand_plus1'], [['basic1', 'strand_plus1']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.feature_type))
+        self._merge_and_compare(['basic1', 'strand_minus1'], [['basic1', 'strand_minus1']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.feature_type))
+        self._merge_and_compare(['basic1', 'strand_plus1', 'strand_minus1'], [['basic1', 'strand_plus1', 'strand_minus1']], merge_criteria=(mc.seqid, mc.overlap_any_inclusive, mc.feature_type))
 
     # TODO test various feature orders
 

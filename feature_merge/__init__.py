@@ -12,7 +12,6 @@ import sys
 import os
 import getopt
 from typing import Sequence, Set, Callable
-from copy import copy
 
 from . import merge_criteria as mc
 
@@ -41,7 +40,8 @@ merge_strategies = {"merge": "merge", "append": "create_unique", "error": "error
 # PR https://github.com/daler/gffutils/pull/131
 # Issue https://github.com/daler/gffutils/issues/119
 
-def merge(self, features, ignore_strand=False, merge_criteria: [Callable] = (mc.any_overlap_inclusive, mc.strand, mc.feature_type),
+def merge(self, features, ignore_strand=False,
+          merge_criteria: [Callable] = (mc.seqid, mc.overlap_end_inclusive, mc.strand, mc.feature_type),
           multiline: bool = False):
     """
     Merge features matching criteria together
@@ -52,6 +52,8 @@ def merge(self, features, ignore_strand=False, merge_criteria: [Callable] = (mc.
     cur: candidate feature to merge
     components: list of features that compose acc
     return: true to merge cur into acc, false to set cur to acc (start a new merged feature)
+    If merge criteria allows different feature types then the merged features feature types should have their
+    feature_type property reassigned to a more specific ontology value.
 
     Returned Features have a special property called 'children' that is a list of the component features.
     This only exists for the lifetime of the Feature instance.
@@ -97,10 +99,14 @@ def merge(self, features, ignore_strand=False, merge_criteria: [Callable] = (mc.
                 feature_children = [feature]
 
             if len(feature_children) == 1:
-                # Current merged is first child
-                current_merged = copy(feature_children[0])
-                current_merged.attributes = gffutils.feature.dict_class()
-                current_merged.extra = []
+                # Current merged is first child, make copy
+                current_merged = vars(feature_children[0]).copy()
+                del current_merged['attributes']
+                del current_merged['extra']
+                del current_merged['dialect']
+                del current_merged['keep_order']
+                del current_merged['sort_attribute_values']
+                current_merged = self._feature_returner(**current_merged)
                 if not last_id:
                     # Generate unique ID for new Feature
                     # This can be simplified after https://github.com/daler/gffutils/pull/135
@@ -112,11 +118,14 @@ def merge(self, features, ignore_strand=False, merge_criteria: [Callable] = (mc.
 
             feature_children.append(feature)
 
+            # Merge attributes. Removed as it doesn't make sence to collect attributes in an aggrigate feature when
+            # Parent relationships present
             #current_merged.attributes = gffutils.helpers.merge_attributes(feature.attributes, current_merged.attributes)
             # Preserve ID
             #current_merged['ID'] = last_id
 
             # Set mismatched properties to ambiguous values
+            if feature.seqid not in current_merged.seqid.split(','): current_merged.seqid += ',' + feature.seqid
             if feature.strand != current_merged.strand: current_merged.strand = '.'
             if feature.frame != current_merged.frame: current_merged.frame = '.'
             if feature.featuretype != current_merged.featuretype: current_merged.featuretype = "sequence_feature"
@@ -203,7 +212,7 @@ def assign_child(parent, child):
 
 def merge_all(self,
               merge_order: (str,) = ('seqid', 'featuretype', 'strand', 'start'),
-              merge_criteria: '[Callable]' = (mc.any_overlap_inclusive, mc.strand, mc.feature_type),
+              merge_criteria: '[Callable]' = (mc.seqid, mc.overlap_end_inclusive, mc.strand, mc.feature_type),
               featuretypes_groups: 'Sequence[Set[str]]' = (None,),
               exclude_components: bool = False):
     """
@@ -294,7 +303,7 @@ def get_args(sysargs):
     if exact_only:
         merge_criteria.append(mc.exact_coordinates_only)
     else:
-        merge_criteria.append(mc.any_overlap_inclusive)
+        merge_criteria.append(mc.overlap_any_inclusive)
 
     if not ignore_strand:
         merge_criteria.append(mc.strand)
