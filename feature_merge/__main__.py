@@ -3,9 +3,6 @@ import sys
 
 from . import get_args, load_data, merge_all
 
-# Output header
-print("##gff-version 3")
-
 paths, merge_strategy, merge_order, *args = get_args(sys.argv[1:])
 
 try:
@@ -16,6 +13,9 @@ except ValueError as e:
     exit(0)
 
 merge_all(db, merge_order, *args)
+
+# Output header
+print("##gff-version 3")
 
 for feature in db.all_features(order_by=merge_order):
     # Set source
