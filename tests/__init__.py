@@ -1,7 +1,6 @@
 from unittest import TestCase
 import gffutils
 
-
 paths = (
     'test-data/615598_genome.gbk_1.gff3',
     'test-data/615598_genome.gbk_2.gff3',

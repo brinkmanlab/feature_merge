@@ -16,6 +16,5 @@ with open('README.rst') as readme:
         author_email='nolan_w@sfu.ca',
         description='Merge overlapping features of GFF/GTF files.',
         include_package_data=True,
-        test_suite='nose.collector',
-        tests_require=['nose'],
+        test_suite='tests',
     )
