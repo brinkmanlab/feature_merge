@@ -40,7 +40,7 @@ class TestMerge_all(TestWithSynthDB):
         self.assertEqual(0, len(merged), dump)
 
     def test_merge_groups(self):
-        merged = merge_all(self.db, featuretypes_groups=('sequence_feature', 'misc_feature'))
+        merged = merge_all(self.db, featuretypes_groups=({'sequence_feature', 'misc_feature'},))
         dump = self._dump_db()
         self.assertEqual(num_synthetic_features + 1, self.db.count_features_of_type(), dump)
         self.assertEqual(1, len(merged), dump)
