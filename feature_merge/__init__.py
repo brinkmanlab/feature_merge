@@ -270,7 +270,7 @@ def get_args(sysargs):
         for opt, val in opts:
             if opt == '-v':
                 import __version
-                print(__version.__versionstr__)
+                print(__version.__version__)
                 exit(0)
             elif opt == '-i':
                 ignore_strand = True
