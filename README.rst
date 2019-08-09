@@ -8,11 +8,11 @@ Merge features in GFF files
 
 Installation::
 
-    pip install feature_merge
+    pip install feature-merge
 
 or::
 
-    conda install feature_merge
+    conda install feature-merge
 
 or::
 
