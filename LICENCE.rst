@@ -13,7 +13,10 @@ The above copyright notice and this permission notice shall be included in all c
 portions of the Software.
 
 Any publication resulting in the use of the Software or its code in whole or in part shall cite:
-    Nolan Woods, Kristen Gray, Fiona Brinkman; Brinkman Lab, SFU. "Merging features in GFF files" doi: 
+    Nolan Woods, Kristen Gray, Fiona Brinkman; Brinkman Lab, SFU. "Merging features in GFF files" doi: 10.5281/zenodo.3364785
+    
+    .. image:: https://zenodo.org/badge/166121742.svg
+        :target: https://zenodo.org/badge/latestdoi/166121742
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE

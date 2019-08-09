@@ -1,3 +1,6 @@
+.. image:: https://zenodo.org/badge/166121742.svg
+    :target: https://zenodo.org/badge/latestdoi/166121742
+
 =============
 feature_merge
 =============
