@@ -12,7 +12,7 @@ Installation::
 
 or::
 
-    conda install feature-merge
+    conda install feature_merge
 
 or::
 
