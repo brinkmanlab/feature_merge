@@ -22,6 +22,7 @@ Accepts GFF or GTF format.
 -f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)
 -i Ignore strand, merge feature regardless of strand
 -x Only merge features with identical coordinates
+-c Merge child records. By default any record with a Parent attribute will not be merged.
 -e Exclude component features from output
 -m Merge strategy used to deal with id collisions between input files.
     merge: attributes of all features with the same primary key will be merged
@@ -260,13 +261,14 @@ def get_args(sysargs):
     ignore_strand = False
     ignore_featuretypes = False
     exact_only = False
+    no_children = True
     exclude_components = False
     featuretypes_groups = []
     merge_strategy = "create_unique"
     merge_criteria = []
     # Parse arguments
     try:
-        opts, args = getopt.gnu_getopt(sysargs, 'viexf:m:')
+        opts, args = getopt.gnu_getopt(sysargs, 'viecxf:m:')
         for opt, val in opts:
             if opt == '-v':
                 from . import __version
@@ -286,6 +288,8 @@ def get_args(sysargs):
                     merge_strategy = merge_strategies[val]
                 else:
                     raise getopt.GetoptError("Invalid merge strategy", opt)
+            elif opt == '-c':
+                no_children = False
 
     except getopt.GetoptError as err:
         # TODO raise exception rather than exit
@@ -302,6 +306,9 @@ def get_args(sysargs):
     if not len(paths):
         # TODO raise exception rather than exit
         exit(0)
+
+    if no_children:
+        merge_criteria.append(mc.no_children)
 
     if exact_only:
         merge_criteria.append(mc.exact_coordinates_only)
