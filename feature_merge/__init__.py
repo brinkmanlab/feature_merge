@@ -269,7 +269,7 @@ def get_args(sysargs):
         opts, args = getopt.gnu_getopt(sysargs, 'viexf:m:')
         for opt, val in opts:
             if opt == '-v':
-                import __version
+                from . import __version
                 print(__version.__version__)
                 exit(0)
             elif opt == '-i':
