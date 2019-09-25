@@ -15,6 +15,8 @@ synthetic_path = 'test-data/synthetic.gff3'
 num_synthetic_features = 18
 num_synthetic_overlap = 13
 
+## TODO Add tests for data with existing IDs
+## TODO Add tests for input data with records from this program
 
 class TestWithSynthDB(TestCase):
     def setUp(self) -> None:
