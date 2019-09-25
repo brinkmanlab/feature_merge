@@ -31,5 +31,21 @@ def overlap_start_inclusive(acc: Feature, cur: Feature, components: [Feature]):
 def overlap_any_inclusive(acc: Feature, cur: Feature, components: [Feature]):
     return acc.start <= cur.start <= acc.end + 1 or acc.start <= cur.end + 1 <= acc.end + 1
 
-def no_children(acc: Feature, cur: Feature, components: [Feature]):
-    return 'Parent' in cur.attributes
+
+def overlap_end_threshold(threshold: int):
+    def partial(acc: Feature, cur: Feature, components: [Feature]):
+        return acc.start <= cur.start <= acc.end + threshold
+    return partial
+
+
+def overlap_start_threshold(threshold: int):
+    def partial(acc: Feature, cur: Feature, components: [Feature]):
+        return acc.start - threshold <= cur.end + 1 <= acc.end + 1
+
+    return partial
+
+
+def overlap_any_threshold(threshold: int):
+    def partial(acc: Feature, cur: Feature, components: [Feature]):
+        return acc.start - threshold <= cur.end + 1 <= acc.end + 1 or acc.start <= cur.start <= acc.end + threshold
+    return partial
