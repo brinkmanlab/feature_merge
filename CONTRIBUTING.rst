@@ -24,7 +24,7 @@ To create a new release for pypi and conda:
 
 1. Clone this repository
 2. Make sure all tests pass first by running `./setup.py test`
-3. Use git or the GitHub interface to tag the repository with the next version. Precede the verion number with a 'v'. Follow symantic versioning rules https://semver.org/:
+3. Use git or the GitHub interface to tag the repository with the next version. Precede the version number with a 'v'. Follow symantic versioning rules https://semver.org/:
 
     Given a version number MAJOR.MINOR.PATCH, increment the:
 
