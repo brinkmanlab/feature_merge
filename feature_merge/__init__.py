@@ -41,6 +41,18 @@ merge_strategies = {"merge": "merge", "append": "create_unique", "error": "error
 # PR https://github.com/daler/gffutils/pull/131
 # Issue https://github.com/daler/gffutils/issues/119
 
+no_children = tuple()
+
+
+def _finalize_merge(feature, feature_children):
+    if len(feature_children) > 1:
+        feature.source = ','.join(set(child.source for child in feature_children))
+        feature.children = feature_children
+    else:
+        feature.children = no_children
+    return feature
+
+
 def merge(self, features, ignore_strand=False,
           merge_criteria: [Callable] = (mc.seqid, mc.overlap_end_inclusive, mc.strand, mc.feature_type),
           multiline: bool = False):
@@ -76,32 +88,41 @@ def merge(self, features, ignore_strand=False,
 
     # To start, we create a merged feature of just the first feature.
     features = iter(features)
-    try:
-        feature = next(features)
-    except StopIteration:
-        return
-    current_merged = feature
-    feature_children = [feature]
     last_id = None
-    no_children = tuple()
+    current_merged = None
+    feature_children = []
 
     for feature in features:
-        if all(criteria(current_merged, feature, feature_children) for criteria in merge_criteria):
-            # Criteria satisfied, merge
-            if multiline and (feature.start > current_merged.end + 1 or feature.end + 1 < current_merged.start):
-                # Feature is possibly multiline, keep ID but start new record
-                if len(feature_children) > 1:
-                    current_merged.children = feature_children
-                    current_merged.source = ','.join(set(child.source for child in feature_children))
-                else:
-                    current_merged.children = no_children
-                yield current_merged
+        if current_merged is None:
+            if all(criteria(feature, feature, feature_children) for criteria in merge_criteria):
                 current_merged = feature
                 feature_children = [feature]
+            else:
+                yield _finalize_merge(feature, no_children)
+                last_id = None
+            continue
+
+        if len(feature_children) == 0: # current_merged is last feature and unchecked
+            if all(criteria(current_merged, current_merged, feature_children) for criteria in merge_criteria):
+                feature_children.append(current_merged)
+            else:
+                yield _finalize_merge(current_merged, no_children)
+                current_merged = feature
+                last_id = None
+                continue
+
+        if all(criteria(current_merged, feature, feature_children) for criteria in merge_criteria):
+            # Criteria satisfied, merge
+            # TODO Test multiline records and iron out the following code
+            #if multiline and (feature.start > current_merged.end + 1 or feature.end + 1 < current_merged.start):
+            #    # Feature is possibly multiline (discontiguous), keep ID but start new record
+            #    yield _finalize_merge(current_merged, feature_children)
+            #    current_merged = feature
+            #    feature_children = [feature]
 
             if len(feature_children) == 1:
-                # Current merged is first child, make copy
-                current_merged = vars(feature_children[0]).copy()
+                # Current merged is only child and merge is going to occur, make copy
+                current_merged = vars(current_merged).copy()
                 del current_merged['attributes']
                 del current_merged['extra']
                 del current_merged['dialect']
@@ -119,11 +140,11 @@ def merge(self, features, ignore_strand=False,
 
             feature_children.append(feature)
 
-            # Merge attributes. Removed as it doesn't make sence to collect attributes in an aggrigate feature when
+            # Merge attributes. Removed as it doesn't make sense to collect attributes in an aggrigate feature when
             # Parent relationships present
-            #current_merged.attributes = gffutils.helpers.merge_attributes(feature.attributes, current_merged.attributes)
+            # current_merged.attributes = gffutils.helpers.merge_attributes(feature.attributes, current_merged.attributes)
             # Preserve ID
-            #current_merged['ID'] = last_id
+            # current_merged['ID'] = last_id
 
             # Set mismatched properties to ambiguous values
             if feature.seqid not in current_merged.seqid.split(','): current_merged.seqid += ',' + feature.seqid
@@ -140,22 +161,13 @@ def merge(self, features, ignore_strand=False,
                 current_merged.end = feature.end
 
         else:
-            if len(feature_children) > 1:
-                current_merged.children = feature_children
-                current_merged.source = ','.join(set(child.source for child in feature_children))
-            else:
-                current_merged.children = no_children
-            yield current_merged
+            yield _finalize_merge(current_merged, feature_children)
             current_merged = feature
-            feature_children = [feature]
+            feature_children = []
             last_id = None
 
-    if len(feature_children) > 1:
-        current_merged.children = feature_children
-        current_merged.source = ','.join(set(child.source for child in feature_children))
-    else:
-        current_merged.children = no_children
-    yield current_merged
+    if current_merged:
+        yield _finalize_merge(current_merged, feature_children)
 
 
 def update(self, data, **kwargs):
@@ -240,6 +252,7 @@ def merge_all(self,
                             merge_criteria=merge_criteria):
             # If feature is result of merge
             if merged.children:
+                self._insert(merged, self.conn.cursor())
                 if exclude_components:
                     # Remove child features from DB
                     self.delete(merged.children)
@@ -247,7 +260,7 @@ def merge_all(self,
                     # Add child relations to DB
                     for child in merged.children:
                         self.add_relation(merged, child, 1, child_func=assign_child)
-                self._insert(merged, self.conn.cursor())
+
                 result_features.append(merged)
             else:
                 pass  # Do nothing, feature is already in DB
@@ -261,14 +274,14 @@ def get_args(sysargs):
     ignore_strand = False
     ignore_featuretypes = False
     exact_only = False
-    no_children = True
+    threshold = None
     exclude_components = False
     featuretypes_groups = []
     merge_strategy = "create_unique"
     merge_criteria = []
     # Parse arguments
     try:
-        opts, args = getopt.gnu_getopt(sysargs, 'viecxf:m:')
+        opts, args = getopt.gnu_getopt(sysargs, 'viecxf:m:t:')
         for opt, val in opts:
             if opt == '-v':
                 from . import __version
@@ -288,8 +301,8 @@ def get_args(sysargs):
                     merge_strategy = merge_strategies[val]
                 else:
                     raise getopt.GetoptError("Invalid merge strategy", opt)
-            elif opt == '-c':
-                no_children = False
+            elif opt == '-t':
+                threshold = int(val)
 
     except getopt.GetoptError as err:
         # TODO raise exception rather than exit
@@ -306,9 +319,6 @@ def get_args(sysargs):
     if not len(paths):
         # TODO raise exception rather than exit
         exit(0)
-
-    if no_children:
-        merge_criteria.append(mc.no_children)
 
     if exact_only:
         merge_criteria.append(mc.exact_coordinates_only)
@@ -352,5 +362,9 @@ def load_data(paths: [str], merge_strategy: str = "create_unique") -> gffutils.F
 
     if len(paths) == 0:
         raise ValueError("No valid input data")
+
+    # Deal with autoincrements being behind by one
+    for a in db._autoincrements:
+        db._autoincrements[a] += 1
 
     return db
