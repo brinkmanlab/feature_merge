@@ -39,6 +39,7 @@ merge_strategies = {"merge": "merge", "append": "create_unique", "error": "error
 # The following two functions are waiting to be integrated into the gffutils library.
 # PR https://github.com/daler/gffutils/pull/130 needs to be updated with below implementation
 # PR https://github.com/daler/gffutils/pull/131
+# PR https://github.com/daler/gffutils/pull/152
 # Issue https://github.com/daler/gffutils/issues/119
 
 no_children = tuple()
