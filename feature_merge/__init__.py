@@ -16,7 +16,7 @@ from typing import Sequence, Set, Callable
 from . import merge_criteria as mc
 
 usage = """
-Usage: feature_merge [-i] [-e] [-x] [-v] [-t <number>]  [-m merge|append|error|skip|replace] [-f type[,type..]].. <input1> [<input_n>..]
+Usage: feature_merge [-i] [-e] [-s] [-x] [-v] [-t <number>]  [-m merge|append|error|skip|replace] [-f type[,type..]].. <input1> [<input_n>..]
 Accepts GFF or GTF format.
 -v Print version and exit
 -f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)

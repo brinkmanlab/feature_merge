@@ -22,7 +22,7 @@ or::
 
 Usage::
 
-    feature_merge [-i] [-e] [-x] [-v] [-m merge|append|error|skip|replace] [-f type[,type..]].. <input1> [<input_n>..]
+    feature_merge [-i] [-e] [-x] [-s] [-v] [-m merge|append|error|skip|replace] [-f type[,type..]].. <input1> [<input_n>..]
     Accepts GFF or GTF format.
     -v Print version and exit
     -f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)
