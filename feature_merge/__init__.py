@@ -282,6 +282,7 @@ def get_args(sysargs):
     featuretypes_groups = []
     merge_strategy = "create_unique"
     merge_criteria = []
+    merge_order = []
     # Parse arguments
     try:
         opts, args = getopt.gnu_getopt(sysargs, 'visecxf:m:t:')
@@ -327,6 +328,7 @@ def get_args(sysargs):
 
     if not ignore_seqid:
         merge_criteria.append(mc.seqid)
+        merge_order.append('seqid')
 
     if exact_only:
         merge_criteria.append(mc.exact_coordinates_only)
@@ -335,22 +337,20 @@ def get_args(sysargs):
     else:
         merge_criteria.append(mc.overlap_any_inclusive)
 
+    if not ignore_featuretypes:
+        merge_criteria.append(mc.feature_type)
+        merge_order.append('featuretype')
+
     if not ignore_strand:
         merge_criteria.append(mc.strand)
+        merge_order.append('strand')
+
+    merge_order.append('start')
 
     if ignore_featuretypes:
-        if ignore_strand:
-            merge_order = ('seqid', 'start', 'featuretype')
-        else:
-            merge_order = ('seqid', 'strand', 'start', 'featuretype')
-    else:
-        merge_criteria.append(mc.feature_type)
-        if ignore_strand:
-            merge_order = ('seqid', 'featuretype', 'start')
-        else:
-            merge_order = ('seqid', 'featuretype', 'strand', 'start')
+        merge_order.append('featuretype')
 
-    return paths, merge_strategy, merge_order, merge_criteria, featuretypes_groups, exclude_components
+    return paths, merge_strategy, tuple(merge_order), merge_criteria, featuretypes_groups, exclude_components
 
 
 def load_data(paths: [str], merge_strategy: str = "create_unique") -> gffutils.FeatureDB:
