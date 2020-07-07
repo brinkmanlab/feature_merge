@@ -27,7 +27,9 @@ Usage::
     -v Print version and exit
     -f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)
     -i Ignore strand, merge feature regardless of strand
+    -s Ignore sequence id, merge feature regardless of sequence id
     -x Only merge features with identical coordinates
+    -t Threshold distance between features to merge
     -e Exclude component features from output
     -m Merge strategy used to deal with id collisions between input files.
         merge: attributes of all features with the same primary key will be merged

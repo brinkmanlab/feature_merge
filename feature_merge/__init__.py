@@ -21,6 +21,7 @@ Accepts GFF or GTF format.
 -v Print version and exit
 -f Comma seperated types of features to merge. Must be terms or accessions from the SOFA sequence ontology, \"ALL\", or \"NONE\". (Can be provided more than once to specify multiple merge groups)
 -i Ignore strand, merge feature regardless of strand
+-s Ignore sequence id, merge feature regardless of sequence id
 -x Only merge features with identical coordinates
 -t Threshold distance between features to merge 
 -e Exclude component features from output
@@ -272,6 +273,7 @@ def merge_all(self,
 # -- Begin feature_merge specific code --
 
 def get_args(sysargs):
+    ignore_seqid = False
     ignore_strand = False
     ignore_featuretypes = False
     exact_only = False
@@ -282,7 +284,7 @@ def get_args(sysargs):
     merge_criteria = []
     # Parse arguments
     try:
-        opts, args = getopt.gnu_getopt(sysargs, 'viecxf:m:t:')
+        opts, args = getopt.gnu_getopt(sysargs, 'visecxf:m:t:')
         for opt, val in opts:
             if opt == '-v':
                 from . import __version
@@ -304,6 +306,8 @@ def get_args(sysargs):
                     raise getopt.GetoptError("Invalid merge strategy", opt)
             elif opt == '-t':
                 threshold = int(val)
+            elif opt == '-s':
+                ignore_seqid = True
 
     except getopt.GetoptError as err:
         # TODO raise exception rather than exit
@@ -320,6 +324,9 @@ def get_args(sysargs):
     if not len(paths):
         # TODO raise exception rather than exit
         exit(0)
+
+    if not ignore_seqid:
+        merge_criteria.append(mc.seqid)
 
     if exact_only:
         merge_criteria.append(mc.exact_coordinates_only)
