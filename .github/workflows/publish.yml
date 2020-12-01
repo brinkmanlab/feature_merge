@@ -1,9 +1,6 @@
 name: Autobuild
 
 on:
-  create:
-    tags:
-      - 'v*'
   push:
     tags:
       - 'v*'
